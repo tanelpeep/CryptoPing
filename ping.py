@@ -4,7 +4,8 @@ import socket
 
 class PingPacket(object):
 
-    def calculate_checksum(self, buffer):
+    @staticmethod
+    def calculate_checksum(buffer):
 
         """
         I'm not too confident that this is right but testing seems
