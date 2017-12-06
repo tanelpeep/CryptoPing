@@ -101,47 +101,79 @@ class PingSocket(object):
         asyncio.get_event_loop().add_writer(self.socket, callback)
         await future
 
-async def ping(dest_addr, timeout=10):
-        """
-        Returns either the delay (in seconds) or raises an exception.
-        :param dest_addr:
-        :param timeout:
-        """
 
+class PingApp(object):
+    def __init__(self):
+        self.socket = PingSocket()
+        self.timeout = 10
+    def __enter__(self):
+        return self
+
+class PingClient(PingApp):
+    def __init__(self):
+        super(PingClient, self).__init__()
+
+    async def send(self, dest_addr):
         loop = asyncio.get_event_loop()
         info = await loop.getaddrinfo(dest_addr, 0)
         family = info[0][0]
         addr = info[0][4]
-        s = PingSocket()
-        if family == socket.AddressFamily.AF_INET:
-            icmp = proto_icmp
 
-        try:
-            my_socket = socket.socket(family, socket.SOCK_RAW, icmp)
-            my_socket.setblocking(False)
-
-        except OSError as e:
-            msg = e.strerror
-
-            if e.errno == 1:
-                # Operation not permitted
-                msg += (
-                    " - Note that ICMP messages can only be sent from processes"
-                    " running as root."
-                )
-
-                raise OSError(msg)
-
-            raise
-
-        #my_id = int((id(timeout) * random.random()) % 65535)
         my_id = 256
         print(my_id)
 
-        await s.sendto_socket(addr,my_id,timeout,family)
-        s.socket.close()
+        await self.socket.sendto_socket(addr, my_id, self.timeout, family)
+        self.socket.socket.close()
+
+    async def recv(self):
+        print("")
 
 
+class PingServer(PingApp):
+    def __init__(self):
+        super(PingServer, self).__init__()
+
+    async def send(self):
+        print("")
+
+    async def recv(self):
+        print("")
+
+class PingMode(object):
+    def __init__(self):
+        self.dest = ""
+        self.loop = asyncio.get_event_loop()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        print("")
+
+class PingModeClient(PingMode):
+    def __init__(self):
+        super(PingModeClient, self).__init__()
+
+    def init(self):
+        # loop.run_until_complete(client.send("192.168.0.1"))
+        # loop.create_task(some_coroutine())
+        self.loop.create_task(PingClient().send("192.168.0.1"))
+        self.loop.create_task(PingClient().send("192.168.0.1"))
+        # loop.create_task(print("test"))
+        self.loop.create_task(PingClient().send("192.168.0.1"))
+
+        # loop.create_task(ping("192.168.0.1", 10))
+        # loop.create_task(ping("192.168.0.19", 10))
+        # loop.create_task(some_coroutine2())
+        # loop.create_task(ping("192.168.0.1", 10))
+        self.loop.run_forever()
+
+class PingModeServer(PingMode):
+    def __init__(self):
+        super(PingModeServer, self).__init__()
+
+    def init(self):
+        self.loop.run_forever()
 
 def show_usage():
     print(""" USAGE:
@@ -164,21 +196,16 @@ async def some_coroutine2():
 
 if __name__ == '__main__':
     try:
-        mode = sys.argv[1]
+        arg = sys.argv[1]
     except IndexError:
         show_usage()
 
-    if mode == 'client':
-        loop = asyncio.get_event_loop()
-        # loop.run_until_complete(ping("192.168.0.1", 10))
-        # loop.create_task(some_coroutine())
-        loop.create_task(ping("192.168.0.1", 10))
-        loop.create_task(ping("192.168.0.19", 10))
-        # loop.create_task(some_coroutine2())
-        print("fdd")
-        loop.create_task(ping("192.168.0.1", 10))
-        loop.run_forever()
-    elif mode == 'server':
-        print("server")
+    if arg == 'client':
+        with PingModeClient() as client:
+            client.init()
+
+    elif arg == 'server':
+        with PingModeServer() as server:
+            server.init()
 
 
