@@ -83,34 +83,23 @@ class PingPacket(object):
         self.checksum = answer
 
 
-def sendto_ready(packet, socket, future, dest):
-    """
-    :param packet:
-    :param socket:
-    :param future:
-    :param dest:
-    """
-    socket.sendto(packet, dest)
-    asyncio.get_event_loop().remove_writer(socket)
-    future.set_result(None)
+class PingSocket(object):
+    def __init__(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+        self.socket.setblocking(False)
+        self.id = 256
 
+    def socket_sendto(self, dest_ip, packet, future):
+        self.socket.sendto(packet, dest_ip)
+        asyncio.get_event_loop().remove_writer(self.socket)
+        future.set_result(None)
 
-async def send_one_ping(my_socket, dest_addr, id, timeout, family):
-    """
-    Send one ping to the given >dest_addr<.
-    :param my_socket:
-    :param dest_addr:
-    :param id:
-    :param timeout:
-    :return:
-    """
-
-    future = asyncio.get_event_loop().create_future()
-    packet = PingPacket(packet_seq=id)
-    callback = functools.partial(sendto_ready, packet=packet.packet, socket=my_socket, dest=dest_addr, future=future)
-    asyncio.get_event_loop().add_writer(my_socket, callback)
-    await future
-
+    async def sendto_socket(self, dest_addr, id_, timeout, family):
+        future = asyncio.get_event_loop().create_future()
+        packet = PingPacket(packet_seq=255)
+        callback = functools.partial(self.socket_sendto, packet=packet.packet, dest_ip=dest_addr, future=future)
+        asyncio.get_event_loop().add_writer(self.socket, callback)
+        await future
 
 async def ping(dest_addr, timeout=10):
         """
@@ -123,7 +112,7 @@ async def ping(dest_addr, timeout=10):
         info = await loop.getaddrinfo(dest_addr, 0)
         family = info[0][0]
         addr = info[0][4]
-
+        s = PingSocket()
         if family == socket.AddressFamily.AF_INET:
             icmp = proto_icmp
 
@@ -149,11 +138,9 @@ async def ping(dest_addr, timeout=10):
         my_id = 256
         print(my_id)
 
-        await send_one_ping(my_socket, addr, my_id, timeout, family)
-        # delay = await receive_one_ping(my_socket, my_id, timeout)
-        my_socket.close()
+        await s.sendto_socket(addr,my_id,timeout,family)
+        s.socket.close()
 
-        # return delay
 
 
 def show_usage():
