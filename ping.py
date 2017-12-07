@@ -148,10 +148,13 @@ class PingClient(PingApp):
         my_id = 256
         print(my_id)
 
-        await self.socket.sendto_socket(addr, my_id, self.timeout, family)
-        await self.recv()
+        while True:
+            await self.socket.sendto_socket(addr, my_id, self.timeout, family)
+            await asyncio.sleep(2)
+            await self.recv()
 
-        self.socket.socket.close()
+
+        #self.socket.socket.close()
 
     async def recv(self):
 
@@ -201,6 +204,7 @@ class PingClient(PingApp):
 
                      #   return time_received
         except asyncio.TimeoutError:
+            return
             raise TimeoutError("Ping timeout")
         print(data2.encode("utf-8"))
 
