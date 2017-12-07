@@ -72,7 +72,7 @@ class PingPacket(object):
         #bytes_in_double = struct.calcsize("d")
 
         #data = 192 * 'Q'
-        data = '1234567890123456789012345678901234567890'
+        data = 'ICMP data text'
         #data = struct.pack("d", default_timer()) + data.encode("ascii")
         #buffer = header + data
 
@@ -169,18 +169,27 @@ class PingClient(PingApp):
                         offset = 20
                     else:
                         offset = 0
-                    print(rec_packet[20:])
+                    #print(rec_packet[20:])
                     icmp_header = rec_packet[offset:offset + 8]
+                    print(len(icmp_header))
+                    icmp_header = struct.unpack('bbHHh', icmp_header)
+                    #print(icmp_header[4])
                     data_offset = len(rec_packet) - len(icmp_header)
+                    print(len(rec_packet[20:]))
 
-
+                    header_fmt = 'bbHHh'
+                    payload_fmt = '%ds' % (14)
+                    print(payload_fmt)
                     #return rec_packet
-                    type, code, checksum, packet_id, sequence = struct.unpack(
-                        "bbHHh", icmp_header
-                    )
+                    #type, code, checksum, packet_id, sequence = struct.unpack(
+                    #    "bbHHh", icmp_header
+                    #)
 
                     data = rec_packet[offset + 8:offset + 8 + data_offset]
-                    print(data)
+                    print(len(data))
+
+                    data = struct.unpack(payload_fmt,data)
+                    print(data[0])
                     #print(data.encode("utf-8"))
                     bytes_in_double = struct.calcsize("dddHHH")
                     #print(bytes_in_double)
@@ -188,9 +197,9 @@ class PingClient(PingApp):
                     #print(time_sent)
 
                     #print(rec_packet)
-                    if packet_id == 256:
+                    #if packet_id == 256:
 
-                        return time_received
+                     #   return time_received
         except asyncio.TimeoutError:
             raise TimeoutError("Ping timeout")
         print(data2.encode("utf-8"))
@@ -223,7 +232,7 @@ class PingModeClient(PingMode):
     def init(self):
         # loop.run_until_complete(client.send("192.168.0.1"))
         # loop.create_task(some_coroutine())
-        self.loop.create_task(PingClient().send('192.168.0.10'))
+        self.loop.create_task(PingClient().send('192.168.0.19'))
         #self.loop.create_task(PingClient().send('192.168.0.1'))
         # loop.create_task(print("test"))
         #self.loop.create_task(PingClient().send('192.168.0.1'))
