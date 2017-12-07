@@ -68,10 +68,11 @@ class PingPacket(object):
         # Make a dummy header with a 0 checksum.
         # Header is type (8), code (8), checksum (16), id (16), sequence (16)
         packet_id = int(1)
-        header = struct.pack('bbHHh', ICMP_ECHO_REQUEST, 0, 0, packet_id, 1)
+        header = struct.pack('bbHHh', ICMP_ECHO_REQUEST, 0, 0, packet_id, 2)
         #bytes_in_double = struct.calcsize("d")
 
-        data = 192 * 'Q'
+        #data = 192 * 'Q'
+        data = '1234567890123456789012345678901234567890'
         #data = struct.pack("d", default_timer()) + data.encode("ascii")
         #buffer = header + data
 
@@ -85,7 +86,7 @@ class PingPacket(object):
         # Now that we have the right checksum, we put that in. It's just easier
         # to make up a new header than to stuff it into the dummy.
         header = struct.pack('bbHHh', ICMP_ECHO_REQUEST, 0,
-                             socket.htons(my_checksum), 1, 1)
+                             socket.htons(my_checksum), 1, 2)
         self.packet = header + bytes(data, 'utf-8')
 
 
@@ -149,15 +150,18 @@ class PingClient(PingApp):
 
         await self.socket.sendto_socket(addr, my_id, self.timeout, family)
         await self.recv()
+
         self.socket.socket.close()
 
-
     async def recv(self):
+
         loop = asyncio.get_event_loop()
         timeout = 10
+
         try:
             with async_timeout.timeout(timeout):
                 while True:
+
                     rec_packet = await loop.sock_recv(self.socket.socket, 1024)
                     time_received = default_timer()
 
@@ -165,25 +169,32 @@ class PingClient(PingApp):
                         offset = 20
                     else:
                         offset = 0
-
+                    print(rec_packet[20:])
                     icmp_header = rec_packet[offset:offset + 8]
+                    data_offset = len(rec_packet) - len(icmp_header)
 
 
-
+                    #return rec_packet
                     type, code, checksum, packet_id, sequence = struct.unpack(
                         "bbHHh", icmp_header
                     )
-                    data = rec_packet[offset + 8:offset + 8 + struct.calcsize("d")]
+
+                    data = rec_packet[offset + 8:offset + 8 + data_offset]
+                    print(data)
+                    #print(data.encode("utf-8"))
+                    bytes_in_double = struct.calcsize("dddHHH")
+                    #print(bytes_in_double)
                     #time_sent = struct.unpack("d", data)[0]
                     #print(time_sent)
 
-                    print(rec_packet)
+                    #print(rec_packet)
                     if packet_id == 256:
 
                         return time_received
-
         except asyncio.TimeoutError:
             raise TimeoutError("Ping timeout")
+        print(data2.encode("utf-8"))
+
 class PingServer(PingApp):
     def __init__(self):
         super(PingServer, self).__init__()
@@ -212,7 +223,7 @@ class PingModeClient(PingMode):
     def init(self):
         # loop.run_until_complete(client.send("192.168.0.1"))
         # loop.create_task(some_coroutine())
-        self.loop.create_task(PingClient().send('192.168.0.19'))
+        self.loop.create_task(PingClient().send('192.168.0.10'))
         #self.loop.create_task(PingClient().send('192.168.0.1'))
         # loop.create_task(print("test"))
         #self.loop.create_task(PingClient().send('192.168.0.1'))
