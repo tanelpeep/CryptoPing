@@ -68,7 +68,7 @@ class PingPacket(object):
         # Make a dummy header with a 0 checksum.
         # Header is type (8), code (8), checksum (16), id (16), sequence (16)
         packet_id = int(1)
-        header = struct.pack('bbHHh', ICMP_ECHO_REQUEST, 0, 0, packet_id, 2)
+        header = struct.pack('bbHHh', ICMP_ECHO_REQUEST, 0, 0, 1, self.packet_seq)
         #bytes_in_double = struct.calcsize("d")
 
         #data = 192 * 'Q'
@@ -85,8 +85,7 @@ class PingPacket(object):
 
         # Now that we have the right checksum, we put that in. It's just easier
         # to make up a new header than to stuff it into the dummy.
-        header = struct.pack('bbHHh', ICMP_ECHO_REQUEST, 0,
-                             socket.htons(my_checksum), 1, 2)
+        header = struct.pack('bbHHh', ICMP_ECHO_REQUEST, 0, socket.htons(my_checksum), 1, self.packet_seq)
         self.packet = header + bytes(data, 'utf-8')
 
 
@@ -105,25 +104,8 @@ class PingSocket(object):
 
     async def sendto_socket(self, dest_addr, id_, timeout, family):
         future = asyncio.get_event_loop().create_future()
-        packet = PingPacket(packet_seq=1)
+        packet = PingPacket(packet_seq=id_)
         callback = functools.partial(self.socket_sendto, packet=packet.packet, dest_ip=dest_addr, future=future)
-        asyncio.get_event_loop().add_writer(self.socket, callback)
-        await future
-
-    def socket_receieve(self, future):
-        while True:
-
-            r = select.select([self.socket], [], [])
-            for i in r:
-                print("dd")
-                print(i), i.recvfrom(0)
-
-        asyncio.get_event_loop().remove_writer(self.socket)
-        future.set_result(None)
-
-    async def receive_socket(self):
-        future = asyncio.get_event_loop().create_future()
-        callback = functools.partial(self.socket_receieve,future=future)
         asyncio.get_event_loop().add_writer(self.socket, callback)
         await future
 
@@ -145,13 +127,14 @@ class PingClient(PingApp):
         family = info[0][0]
         addr = info[0][4]
 
-        my_id = 256
+        my_id = 1
         print(my_id)
 
         while True:
             await self.socket.sendto_socket(addr, my_id, self.timeout, family)
             await asyncio.sleep(2)
             await self.recv()
+            my_id += 1
 
 
         #self.socket.socket.close()
