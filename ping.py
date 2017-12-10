@@ -72,7 +72,9 @@ class PingPacket(object):
         #bytes_in_double = struct.calcsize("d")
 
         #data = 192 * 'Q'
-        data = 'ICMP data text'
+        data = 'ICMP data'
+        if(len(data) % 2 != 0):
+            data += " "
         #data = struct.pack("d", default_timer()) + data.encode("ascii")
         #buffer = header + data
 
@@ -132,9 +134,9 @@ class PingClient(PingApp):
 
         while True:
             await self.send(addr, my_id, family)
-            await asyncio.sleep(2)
+            #await asyncio.sleep(2)
             await self.recv()
-            my_id += 1
+            #my_id += 1
 
 
         #self.socket.socket.close()
@@ -160,10 +162,13 @@ class PingClient(PingApp):
                     rec_packet = await loop.sock_recv(self.socket.socket, 1024)
                     time_received = default_timer()
 
-                    if self.socket.socket.family == socket.AddressFamily.AF_INET:
-                        offset = 20
-                    else:
-                        offset = 0
+                    #if self.socket.socket.family == socket.AddressFamily.AF_INET:
+                    #    offset = 20
+                    #else:
+                       # offset = 0
+                    offset = 20
+
+                    print(rec_packet)
                     #print(rec_packet[20:])
                     icmp_header = rec_packet[offset:offset + 8]
                     print(len(icmp_header))
