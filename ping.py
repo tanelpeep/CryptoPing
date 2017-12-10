@@ -121,7 +121,7 @@ class PingClient(PingApp):
     def __init__(self):
         super(PingClient, self).__init__()
 
-    async def send(self, dest_addr):
+    async def comm(self, dest_addr):
         loop = asyncio.get_event_loop()
         info = await loop.getaddrinfo(dest_addr, 0)
         family = info[0][0]
@@ -131,10 +131,19 @@ class PingClient(PingApp):
         print(my_id)
 
         while True:
-            await self.socket.sendto_socket(addr, my_id, self.timeout, family)
+            await self.send(addr, my_id, family)
             await asyncio.sleep(2)
             await self.recv()
             my_id += 1
+
+
+        #self.socket.socket.close()
+    async def send(self, dest_addr, my_id, family):
+
+
+
+        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family)
+
 
 
         #self.socket.socket.close()
@@ -219,7 +228,7 @@ class PingModeClient(PingMode):
     def init(self):
         # loop.run_until_complete(client.send("192.168.0.1"))
         # loop.create_task(some_coroutine())
-        self.loop.create_task(PingClient().send('192.168.0.19'))
+        self.loop.create_task(PingClient().comm('192.168.0.19'))
         #self.loop.create_task(PingClient().send('192.168.0.1'))
         # loop.create_task(print("test"))
         #self.loop.create_task(PingClient().send('192.168.0.1'))
