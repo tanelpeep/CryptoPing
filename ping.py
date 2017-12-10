@@ -72,7 +72,7 @@ class PingPacket(object):
         #bytes_in_double = struct.calcsize("d")
 
         #data = 192 * 'Q'
-        data = 'ICMP data'
+        data = 'ICMP data text1234'
         if(len(data) % 2 != 0):
             data += " "
         #data = struct.pack("d", default_timer()) + data.encode("ascii")
@@ -171,6 +171,9 @@ class PingClient(PingApp):
                     print(rec_packet)
                     #print(rec_packet[20:])
                     icmp_header = rec_packet[offset:offset + 8]
+                    icmp_data = rec_packet[offset:offset:8]
+                    print(len(rec_packet))
+                    print(len(icmp_data))
                     print(len(icmp_header))
                     icmp_header = struct.unpack('bbHHh', icmp_header)
                     #print(icmp_header[4])
@@ -178,14 +181,15 @@ class PingClient(PingApp):
                     print(len(rec_packet[20:]))
 
                     header_fmt = 'bbHHh'
-                    payload_fmt = '%ds' % (14)
+                    data = rec_packet[offset + 8:offset + 8 + data_offset]
+
+                    payload_fmt = '%ds' % (len(data))
                     print(payload_fmt)
                     #return rec_packet
                     #type, code, checksum, packet_id, sequence = struct.unpack(
                     #    "bbHHh", icmp_header
                     #)
 
-                    data = rec_packet[offset + 8:offset + 8 + data_offset]
                     print(len(data))
 
                     data = struct.unpack(payload_fmt,data)
