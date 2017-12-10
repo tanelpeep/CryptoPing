@@ -8,6 +8,7 @@ from aioconsole import ainput
 import numpy as np
 import select
 import async_timeout
+import ui
 import random
 import os
 
@@ -151,9 +152,16 @@ class PingApp(object):
     def __init__(self):
         self.socket = PingSocket()
         self.timeout = 10
-        self.message = "test123"
+        self.message = "test1234"
+        self.packet_seq = 1
     def __enter__(self):
         return self
+
+    async def cli_input(self):
+        while True:
+            self.message = await ainput("")
+            if (len(self.message) % 2 != 0):
+                self.message += " "
 
 class PingClient(PingApp):
     def __init__(self):
@@ -174,9 +182,7 @@ class PingClient(PingApp):
             await self.recv()
             #my_id += 1
 
-    async def cli_input(self):
-        while True:
-            self.message = await ainput("")
+
         #self.socket.socket.close()
 
     async def send(self, dest_addr, my_id, family):
@@ -197,7 +203,13 @@ class PingClient(PingApp):
                     rec_packet = await loop.sock_recv(self.socket.socket, 1024)
                     time_received = default_timer()
                     data = PingPacket(1,packet=rec_packet)
+                    if(data.data == self.message):
+                        print("Same packet")
+                    elif(data.data != self.message):
+                        print("different data")
+                        return
                     print(data.data)
+                    print(self.message)
                     #if self.socket.socket.family == socket.AddressFamily.AF_INET:
                     #    offset = 20
                     #else:
@@ -241,10 +253,8 @@ class PingClient(PingApp):
 
                      #   return time_received
         except asyncio.TimeoutError:
-            return
-            raise TimeoutError("Ping timeout")
-        print(data2.encode("utf-8"))
-
+            #raise TimeoutError("Ping timeout")
+            print("Ping timeout")
 class PingServer(PingApp):
     def __init__(self):
         super(PingServer, self).__init__()
@@ -271,31 +281,26 @@ class PingModeClient(PingMode):
         super(PingModeClient, self).__init__()
         self.client = PingClient()
 
-    def init(self):
+    def init(self, dest_addr):
         # loop.run_until_complete(client.send("192.168.0.1"))
         self.loop.create_task(self.client.cli_input())
-        self.loop.create_task(self.client.comm('192.168.0.19'))
-        #self.loop.create_task(PingClient().send('192.168.0.1'))
-        # loop.create_task(print("test"))
-        #self.loop.create_task(PingClient().send('192.168.0.1'))
-        #self.loop.create_task(PingClient().recv())
-        # loop.create_task(ping("192.168.0.1", 10))
-        # loop.create_task(ping("192.168.0.19", 10))
-        # loop.create_task(some_coroutine2())
-        # loop.create_task(ping("192.168.0.1", 10))
+        self.loop.create_task(self.client.comm(dest_addr=dest_addr))
         self.loop.run_forever()
 
 class PingModeServer(PingMode):
     def __init__(self):
         super(PingModeServer, self).__init__()
+        self.server = PingServer()
 
-    def init(self):
+    def init(self, dest_addr):
         self.loop.run_forever()
+        self.loop.create_task(self.server.cli_input())
+        self.loop.create_task(self.server.comm(dest_addr=dest_addr))
 
 def show_usage():
     print(""" USAGE:
-    pyping.py client
-    pyping.py server""")
+    pyping.py client <destination IP>
+    pyping.py server <local listening IP>""")
     exit()
 
 
@@ -318,9 +323,18 @@ if __name__ == '__main__':
         show_usage()
 
     if arg == 'client':
+        try:
+            dst_addr = sys.argv[2]
+        except:
+            show_usage()
+
         with PingModeClient() as client:
-            client.init()
+            client.init(dest_addr=dst_addr)
 
     elif arg == 'server':
+        try:
+            lcl_addr = sys.argv[2]
+        except:
+            show_usage()
         with PingModeServer() as server:
             server.init()
