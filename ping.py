@@ -28,7 +28,7 @@ else:
 
 
 class PingPacket(object):
-    def __init__(self, packet_seq, message=None, packet=None):
+    def __init__(self, packet_seq, packet_type=None, message=None, packet=None):
         if packet:
             self.packet = packet
             self.data = ""
@@ -36,6 +36,7 @@ class PingPacket(object):
         else:
             self.buffer = 0
             self.packet = 0
+            self.packet_type = packet_type
             self.message = message
             self.checksum = 0
             self.packet_seq = packet_seq
@@ -140,9 +141,9 @@ class PingSocket(object):
         asyncio.get_event_loop().remove_writer(self.socket)
         future.set_result(None)
 
-    async def sendto_socket(self, dest_addr, id_, timeout, family, message):
+    async def sendto_socket(self, dest_addr, id_, timeout, family, message, packet_type):
         future = asyncio.get_event_loop().create_future()
-        packet = PingPacket(packet_seq=id_, message=message)
+        packet = PingPacket(packet_seq=id_, message=message, packet_type=packet_type)
         callback = functools.partial(self.socket_sendto, packet=packet.packet, dest_ip=dest_addr, future=future)
         asyncio.get_event_loop().add_writer(self.socket, callback)
         await future
@@ -154,6 +155,7 @@ class PingApp(object):
         self.timeout = 10
         self.message = "test1234"
         self.packet_seq = 1
+
     def __enter__(self):
         return self
 
@@ -166,6 +168,7 @@ class PingApp(object):
 class PingClient(PingApp):
     def __init__(self):
         super(PingClient, self).__init__()
+        self.packet_type = ICMP_ECHO_REQUEST
 
     async def comm(self, dest_addr):
         loop = asyncio.get_event_loop()
@@ -187,7 +190,7 @@ class PingClient(PingApp):
 
     async def send(self, dest_addr, my_id, family):
 
-        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=self.message)
+        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=self.message, packet_type=self.packet_type)
 
         #self.socket.socket.close()
 
@@ -258,12 +261,54 @@ class PingClient(PingApp):
 class PingServer(PingApp):
     def __init__(self):
         super(PingServer, self).__init__()
+        self.packet_type = ICMP_ECHO_REPLY
 
-    async def send(self):
-        print("")
+    async def comm(self, dest_addr):
+        loop = asyncio.get_event_loop()
+        info = await loop.getaddrinfo(dest_addr, 0)
+        family = info[0][0]
+        addr = info[0][4]
+
+        my_id = 1
+        print(my_id)
+
+        while True:
+            await self.send(addr, my_id, family)
+            await asyncio.sleep(2)
+            await self.recv()
+            #my_id += 1
+
+        #self.socket.socket.close()
+
+    async def send(self, dest_addr, my_id, family):
+
+        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=self.message)
+
+        #self.socket.socket.close()
 
     async def recv(self):
-        print("")
+
+        loop = asyncio.get_event_loop()
+        timeout = 10
+
+        try:
+            with async_timeout.timeout(timeout):
+                while True:
+
+                    rec_packet = await loop.sock_recv(self.socket.socket, 1024)
+                    time_received = default_timer()
+                    data = PingPacket(1,packet=rec_packet)
+                    if(data.data == self.message):
+                        print("Same packet")
+                    elif(data.data != self.message):
+                        print("different data")
+                        return
+                    print(data.data)
+                    print(self.message)
+
+        except asyncio.TimeoutError:
+            #raise TimeoutError("Ping timeout")
+            print("Ping timeout")
 
 class PingMode(object):
     def __init__(self):
