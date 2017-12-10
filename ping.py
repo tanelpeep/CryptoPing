@@ -75,7 +75,7 @@ class PingPacket(object):
         # Make a dummy header with a 0 checksum.
         # Header is type (8), code (8), checksum (16), id (16), sequence (16)
         packet_id = int(1)
-        header = struct.pack('bbHHh', ICMP_ECHO_REQUEST, 0, 0, 1, self.packet_seq)
+        header = struct.pack('bbHHh', self.packet_type, 0, 0, 1, self.packet_seq)
         #bytes_in_double = struct.calcsize("d")
 
         #data = 192 * 'Q'
@@ -95,7 +95,7 @@ class PingPacket(object):
 
         # Now that we have the right checksum, we put that in. It's just easier
         # to make up a new header than to stuff it into the dummy.
-        header = struct.pack('bbHHh', ICMP_ECHO_REQUEST, 0, socket.htons(my_checksum), 1, self.packet_seq)
+        header = struct.pack('bbHHh', self.packet_type, 0, socket.htons(my_checksum), 1, self.packet_seq)
         self.packet = header + bytes(data, 'utf-8')
 
     def read_packet(self):
