@@ -27,7 +27,7 @@ else:
 
 
 class PingPacket(object):
-    def __init__(self, packet_seq, packet=None):
+    def __init__(self, packet_seq, message=None, packet=None):
         if packet:
             self.packet = packet
             self.data = ""
@@ -35,6 +35,7 @@ class PingPacket(object):
         else:
             self.buffer = 0
             self.packet = 0
+            self.message = message
             self.checksum = 0
             self.packet_seq = packet_seq
             self.create_packet()
@@ -76,7 +77,8 @@ class PingPacket(object):
         #bytes_in_double = struct.calcsize("d")
 
         #data = 192 * 'Q'
-        data = 'ICMP data text1234'
+        data = self.message
+
         if(len(data) % 2 != 0):
             data += " "
         #data = struct.pack("d", default_timer()) + data.encode("ascii")
@@ -137,9 +139,9 @@ class PingSocket(object):
         asyncio.get_event_loop().remove_writer(self.socket)
         future.set_result(None)
 
-    async def sendto_socket(self, dest_addr, id_, timeout, family):
+    async def sendto_socket(self, dest_addr, id_, timeout, family, message):
         future = asyncio.get_event_loop().create_future()
-        packet = PingPacket(packet_seq=id_)
+        packet = PingPacket(packet_seq=id_, message=message)
         callback = functools.partial(self.socket_sendto, packet=packet.packet, dest_ip=dest_addr, future=future)
         asyncio.get_event_loop().add_writer(self.socket, callback)
         await future
@@ -149,6 +151,7 @@ class PingApp(object):
     def __init__(self):
         self.socket = PingSocket()
         self.timeout = 10
+        self.message = "test123"
     def __enter__(self):
         return self
 
@@ -167,19 +170,18 @@ class PingClient(PingApp):
 
         while True:
             await self.send(addr, my_id, family)
-            #await asyncio.sleep(2)
+            await asyncio.sleep(2)
             await self.recv()
             #my_id += 1
 
-
+    async def cli_input(self):
+        while True:
+            self.message = await ainput("")
         #self.socket.socket.close()
+
     async def send(self, dest_addr, my_id, family):
 
-
-
-        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family)
-
-
+        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=self.message)
 
         #self.socket.socket.close()
 
@@ -194,7 +196,7 @@ class PingClient(PingApp):
 
                     rec_packet = await loop.sock_recv(self.socket.socket, 1024)
                     time_received = default_timer()
-                    data = PingPacket(1,rec_packet)
+                    data = PingPacket(1,packet=rec_packet)
                     print(data.data)
                     #if self.socket.socket.family == socket.AddressFamily.AF_INET:
                     #    offset = 20
@@ -267,11 +269,12 @@ class PingMode(object):
 class PingModeClient(PingMode):
     def __init__(self):
         super(PingModeClient, self).__init__()
+        self.client = PingClient()
 
     def init(self):
         # loop.run_until_complete(client.send("192.168.0.1"))
-        # loop.create_task(some_coroutine())
-        self.loop.create_task(PingClient().comm('192.168.0.19'))
+        self.loop.create_task(self.client.cli_input())
+        self.loop.create_task(self.client.comm('192.168.0.19'))
         #self.loop.create_task(PingClient().send('192.168.0.1'))
         # loop.create_task(print("test"))
         #self.loop.create_task(PingClient().send('192.168.0.1'))
@@ -321,5 +324,3 @@ if __name__ == '__main__':
     elif arg == 'server':
         with PingModeServer() as server:
             server.init()
-
-
