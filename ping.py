@@ -27,13 +27,17 @@ else:
 
 
 class PingPacket(object):
-    def __init__(self, packet_seq):
-
-        self.buffer = 0
-        self.packet = 0
-        self.checksum = 0
-        self.packet_seq = packet_seq
-        self.create_packet()
+    def __init__(self, packet_seq, packet=None):
+        if packet:
+            self.packet = packet
+            self.data = ""
+            self.read_packet()
+        else:
+            self.buffer = 0
+            self.packet = 0
+            self.checksum = 0
+            self.packet_seq = packet_seq
+            self.create_packet()
 
     @staticmethod
     def create_checksum(buffer):
@@ -90,7 +94,36 @@ class PingPacket(object):
         header = struct.pack('bbHHh', ICMP_ECHO_REQUEST, 0, socket.htons(my_checksum), 1, self.packet_seq)
         self.packet = header + bytes(data, 'utf-8')
 
+    def read_packet(self):
+        offset = 20
+        rec_packet = self.packet
+        # print(rec_packet[20:])
+        icmp_header = rec_packet[offset:offset + 8]
+        icmp_data = rec_packet[offset:offset:8]
+        print(len(rec_packet))
+        print(len(icmp_data))
+        print(len(icmp_header))
+        icmp_header = struct.unpack('bbHHh', icmp_header)
+        # print(icmp_header[4])
+        data_offset = len(rec_packet) - len(icmp_header)
+        print(len(rec_packet[20:]))
 
+        header_fmt = 'bbHHh'
+        data = rec_packet[offset + 8:offset + 8 + data_offset]
+
+        payload_fmt = '%ds' % (len(data))
+        print(payload_fmt)
+        # return rec_packet
+        # type, code, checksum, packet_id, sequence = struct.unpack(
+        #    "bbHHh", icmp_header
+        # )
+
+        print(len(data))
+
+        data = struct.unpack(payload_fmt, data)
+        print(data[0])
+
+        self.data = data[0].decode("utf-8")
 
 
 class PingSocket(object):
@@ -161,41 +194,42 @@ class PingClient(PingApp):
 
                     rec_packet = await loop.sock_recv(self.socket.socket, 1024)
                     time_received = default_timer()
-
+                    data = PingPacket(1,rec_packet)
+                    print(data.data)
                     #if self.socket.socket.family == socket.AddressFamily.AF_INET:
                     #    offset = 20
                     #else:
                        # offset = 0
-                    offset = 20
+                    #offset = 20
 
-                    print(rec_packet)
+                    #print(rec_packet)
                     #print(rec_packet[20:])
-                    icmp_header = rec_packet[offset:offset + 8]
-                    icmp_data = rec_packet[offset:offset:8]
-                    print(len(rec_packet))
-                    print(len(icmp_data))
-                    print(len(icmp_header))
-                    icmp_header = struct.unpack('bbHHh', icmp_header)
+                    #icmp_header = rec_packet[offset:offset + 8]
+                    #icmp_data = rec_packet[offset:offset:8]
+                    #print(len(rec_packet))
+                    #print(len(icmp_data))
+                    #print(len(icmp_header))
+                    #icmp_header = struct.unpack('bbHHh', icmp_header)
                     #print(icmp_header[4])
-                    data_offset = len(rec_packet) - len(icmp_header)
-                    print(len(rec_packet[20:]))
+                    #data_offset = len(rec_packet) - len(icmp_header)
+                    #print(len(rec_packet[20:]))
 
-                    header_fmt = 'bbHHh'
-                    data = rec_packet[offset + 8:offset + 8 + data_offset]
+                    #header_fmt = 'bbHHh'
+                    #data = rec_packet[offset + 8:offset + 8 + data_offset]
 
-                    payload_fmt = '%ds' % (len(data))
-                    print(payload_fmt)
+                    #payload_fmt = '%ds' % (len(data))
+                    #print(payload_fmt)
                     #return rec_packet
                     #type, code, checksum, packet_id, sequence = struct.unpack(
                     #    "bbHHh", icmp_header
                     #)
 
-                    print(len(data))
+                    #print(len(data))
 
-                    data = struct.unpack(payload_fmt,data)
-                    print(data[0])
+                    #data = struct.unpack(payload_fmt,data)
+                    #print(data[0])
                     #print(data.encode("utf-8"))
-                    bytes_in_double = struct.calcsize("dddHHH")
+                    #bytes_in_double = struct.calcsize("dddHHH")
                     #print(bytes_in_double)
                     #time_sent = struct.unpack("d", data)[0]
                     #print(time_sent)
