@@ -180,21 +180,22 @@ class PingClient(PingApp):
         print(my_id)
 
         while True:
-            await self.send(addr, my_id, family)
+            sent_message = await self.send(addr, my_id, family, self.message)
+            await self.recv(sent_message)
             await asyncio.sleep(2)
-            await self.recv()
             #my_id += 1
 
 
         #self.socket.socket.close()
 
-    async def send(self, dest_addr, my_id, family):
+    async def send(self, dest_addr, my_id, family, message):
 
-        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=self.message, packet_type=self.packet_type)
+        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=message, packet_type=self.packet_type)
+        return message
 
         #self.socket.socket.close()
 
-    async def recv(self):
+    async def recv(self, sent_message):
 
         loop = asyncio.get_event_loop()
         timeout = 10
@@ -206,13 +207,13 @@ class PingClient(PingApp):
                     rec_packet = await loop.sock_recv(self.socket.socket, 1024)
                     time_received = default_timer()
                     data = PingPacket(1,packet=rec_packet)
-                    if(data.data == self.message):
+                    if(data.data == sent_message):
                         print("Same packet")
                     elif(data.data != self.message):
                         print("different data")
                         return
-                    print(data.data)
-                    print(self.message)
+                    #print(data.data)
+                    #print(self.message)
                     #if self.socket.socket.family == socket.AddressFamily.AF_INET:
                     #    offset = 20
                     #else:
@@ -297,14 +298,17 @@ class PingServer(PingApp):
 
                     rec_packet = await loop.sock_recv(self.socket.socket, 1024)
                     time_received = default_timer()
-                    data = PingPacket(1, packet=rec_packet)
-                    if(data.data == self.message):
-                        print("Same packet")
-                    elif(data.data != self.message):
-                        print("different data")
-                        return
-                    print(data.data)
-                    print(self.message)
+                    try:
+                        data = PingPacket(1, packet=rec_packet)
+                        if(data.data == self.message):
+                            print("Same packet")
+                        elif(data.data != self.message):
+                            print("different data")
+                            return
+                        print(data.data)
+                        print(self.message)
+                    except Exception:
+                        pass
 
         except asyncio.TimeoutError:
             #raise TimeoutError("Ping timeout")
