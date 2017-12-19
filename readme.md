@@ -11,10 +11,8 @@ ping.py server <destination (client)IP>
 
 ## Overview
 - client:
-
-    Using ICMP ECHO REQUEST
+  - Using ICMP ECHO REQUEST
 
 - server:
-
-    Using ICMP ECHO REPLY
+  - Using ICMP ECHO REPLY
 
