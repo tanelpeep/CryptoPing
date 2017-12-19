@@ -153,6 +153,8 @@ class PingApp(object):
     def __init__(self):
         self.socket = PingSocket()
         self.timeout = 10
+        self.message_head = ""
+        self.message_text = ""
         self.message = "test1234"
         self.packet_seq = 1
 
@@ -161,7 +163,8 @@ class PingApp(object):
 
     async def cli_input(self):
         while True:
-            self.message = await ainput("")
+            self.message_text = await ainput("")
+            self.message = self.message_head + self.message_text
             if (len(self.message) % 2 != 0):
                 self.message += " "
 
@@ -169,6 +172,7 @@ class PingClient(PingApp):
     def __init__(self):
         super(PingClient, self).__init__()
         self.packet_type = ICMP_ECHO_REQUEST
+        self.message_head = "client:"
 
     async def comm(self, dest_addr):
         loop = asyncio.get_event_loop()
@@ -263,6 +267,7 @@ class PingServer(PingApp):
     def __init__(self):
         super(PingServer, self).__init__()
         self.packet_type = ICMP_ECHO_REPLY
+        self.message_head = "server:"
 
     async def comm(self, dest_addr):
         loop = asyncio.get_event_loop()
