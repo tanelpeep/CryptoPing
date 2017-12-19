@@ -8,7 +8,6 @@ from aioconsole import ainput
 import numpy as np
 import select
 import async_timeout
-import ui
 import random
 import os
 
@@ -33,6 +32,7 @@ class PingPacket(object):
             self.packet = packet
             self.data = ""
             self.read_packet()
+            self.packet_type = packet_type
         else:
             self.buffer = 0
             self.packet = 0
@@ -77,7 +77,7 @@ class PingPacket(object):
         packet_id = int(1)
         header = struct.pack('bbHHh', self.packet_type, 0, 0, 1, self.packet_seq)
         #bytes_in_double = struct.calcsize("d")
-
+        print(self.packet_type)
         #data = 192 * 'Q'
         data = self.message
 
@@ -89,7 +89,7 @@ class PingPacket(object):
         # Calculate the checksum on the data and the dummy header.
         #self.buffer = header + data
         #self.create_checksum()
-        print(type(data))
+        #print(type(data))
         headdata = header.decode("utf-8")+data
         my_checksum = PingPacket.create_checksum(headdata)
 
@@ -104,9 +104,9 @@ class PingPacket(object):
         # print(rec_packet[20:])
         icmp_header = rec_packet[offset:offset + 8]
         icmp_data = rec_packet[offset:offset:8]
-        print(len(rec_packet))
-        print(len(icmp_data))
-        print(len(icmp_header))
+        #print(len(rec_packet))
+        #print(len(icmp_data))
+        #print(len(icmp_header))
         icmp_header = struct.unpack('bbHHh', icmp_header)
         # print(icmp_header[4])
         data_offset = len(rec_packet) - len(icmp_header)
@@ -116,13 +116,13 @@ class PingPacket(object):
         data = rec_packet[offset + 8:offset + 8 + data_offset]
 
         payload_fmt = '%ds' % (len(data))
-        print(payload_fmt)
+        #print(payload_fmt)
         # return rec_packet
         # type, code, checksum, packet_id, sequence = struct.unpack(
         #    "bbHHh", icmp_header
         # )
 
-        print(len(data))
+        #print(len(data))
 
         data = struct.unpack(payload_fmt, data)
         print(data[0])
@@ -274,7 +274,7 @@ class PingServer(PingApp):
 
         while True:
             await self.send(addr, my_id, family)
-            await asyncio.sleep(2)
+            #await asyncio.sleep(2)
             await self.recv()
             #my_id += 1
 
@@ -282,7 +282,7 @@ class PingServer(PingApp):
 
     async def send(self, dest_addr, my_id, family):
 
-        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=self.message)
+        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=self.message, packet_type=self.packet_type)
 
         #self.socket.socket.close()
 
@@ -297,7 +297,7 @@ class PingServer(PingApp):
 
                     rec_packet = await loop.sock_recv(self.socket.socket, 1024)
                     time_received = default_timer()
-                    data = PingPacket(1,packet=rec_packet)
+                    data = PingPacket(1, packet=rec_packet)
                     if(data.data == self.message):
                         print("Same packet")
                     elif(data.data != self.message):
@@ -338,9 +338,9 @@ class PingModeServer(PingMode):
         self.server = PingServer()
 
     def init(self, dest_addr):
-        self.loop.run_forever()
         self.loop.create_task(self.server.cli_input())
         self.loop.create_task(self.server.comm(dest_addr=dest_addr))
+        self.loop.run_forever()
 
 def show_usage():
     print(""" USAGE:
@@ -382,4 +382,4 @@ if __name__ == '__main__':
         except:
             show_usage()
         with PingModeServer() as server:
-            server.init()
+            server.init(dest_addr=lcl_addr)
