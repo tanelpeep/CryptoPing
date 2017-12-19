@@ -7,3 +7,10 @@ CryptoPing is python tool to send and receive encrypted messages/files over ICMP
 ping.py client <destination (server)IP>
 ping.py server <destination (client)IP>
 ```
+
+# Overview
+- client:
+    Using ICMP ECHO REQUEST
+
+- server:
+    Using ICMP ECHO REPLY
