@@ -16,3 +16,6 @@ ping.py server <destination (client)IP>
 - server:
 
     Using ICMP ECHO REPLY
+
+### Note
+In _Linux_ ping.py can be used with client and server mode. In _Windows_ is available only client mode.
