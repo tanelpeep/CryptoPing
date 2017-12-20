@@ -193,7 +193,7 @@ class PingClient(PingApp):
         #self.socket.socket.close()
 
     async def send(self, dest_addr, my_id, family, message):
-
+        self.message = "client:0"
         await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=message, packet_type=self.packet_type)
         return message
 
@@ -211,9 +211,13 @@ class PingClient(PingApp):
                     rec_packet = await loop.sock_recv(self.socket.socket, 1024)
                     time_received = default_timer()
                     data = PingPacket(1,packet=rec_packet)
-
-                    if(data.data[0:6] == "server"):
+                    # if > len ja if < len
+                    if(data.data[0:6] == "server" and len(data.data)>8):
                         print(data.data)
+                        #self.message = "0 "
+                        return
+                    elif (data.data[0:6] == "server" and len(data.data)<=8):
+                        #print("ok")
                         return
                     #if(data.data == sent_message):
                     #    print("Same packet")
@@ -284,16 +288,17 @@ class PingServer(PingApp):
         #print(my_id)
 
         while True:
-            await self.send(addr, my_id, family)
+            #await self.send(addr, my_id, family)
+            sent_message = await self.send(addr, my_id, family, self.message)
             #await asyncio.sleep(2)
             await self.recv()
             #my_id += 1
 
         #self.socket.socket.close()
 
-    async def send(self, dest_addr, my_id, family):
-
-        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=self.message, packet_type=self.packet_type)
+    async def send(self, dest_addr, my_id, family, message):
+        self.message = "server:0"
+        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=message, packet_type=self.packet_type)
 
         #self.socket.socket.close()
 
@@ -310,8 +315,12 @@ class PingServer(PingApp):
                     time_received = default_timer()
                     try:
                         data = PingPacket(1, packet=rec_packet)
-                        if (data.data[0:6] == "client"):
+                        if (data.data[0:6] == "client" and len(data.data)>8):
                             print(data.data)
+                            #self.message = "0 "
+                            return
+                        elif (data.data[0:6] == "client" and len(data.data)<=8):
+                            #print("ok")
                             return
                         #if(data.data == self.message):
                         #    print("Same packet")
