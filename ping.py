@@ -77,7 +77,7 @@ class PingPacket(object):
         packet_id = int(1)
         header = struct.pack('bbHHh', self.packet_type, 0, 0, 1, self.packet_seq)
         #bytes_in_double = struct.calcsize("d")
-        print(self.packet_type)
+        #print(self.packet_type)
         #data = 192 * 'Q'
         data = self.message
 
@@ -110,7 +110,7 @@ class PingPacket(object):
         icmp_header = struct.unpack('bbHHh', icmp_header)
         # print(icmp_header[4])
         data_offset = len(rec_packet) - len(icmp_header)
-        print(len(rec_packet[20:]))
+        #print(len(rec_packet[20:]))
 
         header_fmt = 'bbHHh'
         data = rec_packet[offset + 8:offset + 8 + data_offset]
@@ -125,7 +125,7 @@ class PingPacket(object):
         #print(len(data))
 
         data = struct.unpack(payload_fmt, data)
-        print(data[0])
+        #print(data[0])
 
         self.data = data[0].decode("utf-8")
 
@@ -181,7 +181,7 @@ class PingClient(PingApp):
         addr = info[0][4]
 
         my_id = 1
-        print(my_id)
+        #print(my_id)
 
         while True:
             sent_message = await self.send(addr, my_id, family, self.message)
@@ -211,11 +211,16 @@ class PingClient(PingApp):
                     rec_packet = await loop.sock_recv(self.socket.socket, 1024)
                     time_received = default_timer()
                     data = PingPacket(1,packet=rec_packet)
-                    if(data.data == sent_message):
-                        print("Same packet")
-                    elif(data.data != self.message):
-                        print("different data")
+
+                    if(data.data[0:6] == "server"):
+                        print(data.data)
                         return
+                    #if(data.data == sent_message):
+                    #    print("Same packet")
+                    #    print(data.data[0:6])
+                    #elif(data.data != self.message):
+                    #    print("different data")
+                    #    return
                     #print(data.data)
                     #print(self.message)
                     #if self.socket.socket.family == socket.AddressFamily.AF_INET:
@@ -276,7 +281,7 @@ class PingServer(PingApp):
         addr = info[0][4]
 
         my_id = 1
-        print(my_id)
+        #print(my_id)
 
         while True:
             await self.send(addr, my_id, family)
@@ -305,13 +310,16 @@ class PingServer(PingApp):
                     time_received = default_timer()
                     try:
                         data = PingPacket(1, packet=rec_packet)
-                        if(data.data == self.message):
-                            print("Same packet")
-                        elif(data.data != self.message):
-                            print("different data")
+                        if (data.data[0:6] == "client"):
+                            print(data.data)
                             return
-                        print(data.data)
-                        print(self.message)
+                        #if(data.data == self.message):
+                        #    print("Same packet")
+                        #elif(data.data != self.message):
+                        #    print("different data")
+                        #    return
+                        #print(data.data)
+                        #print(self.message)
                     except Exception:
                         pass
 
