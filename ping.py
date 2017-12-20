@@ -149,10 +149,36 @@ class PingSocket(object):
         await future
 
 
+class PingMessage(object):
+    def __init__(self):
+        self.mode = ""
+
+    def recieved_from(self):
+        if self.mode == "server":
+            return "client"
+        elif self.mode == "client":
+            return "server"
+
+    def is_message(self, message):
+        if message[0:6] == self.recieved_from() and len(message) <= 8:
+            return True
+        else:
+            return False
+
+    def is_data(self, message):
+        if message[0:6] == self.recieved_from() and len(message) > 8:
+            return True
+        else:
+            return False
+
+
+
+
 class PingApp(object):
     def __init__(self):
         self.socket = PingSocket()
         self.timeout = 10
+        self.ping_message = PingMessage()
         self.message_head = ""
         self.message_text = ""
         self.message = "test1234"
@@ -173,6 +199,7 @@ class PingClient(PingApp):
         super(PingClient, self).__init__()
         self.packet_type = ICMP_ECHO_REQUEST
         self.message_head = "client:"
+        self.ping_message.mode = "client"
 
     async def comm(self, dest_addr):
         loop = asyncio.get_event_loop()
@@ -186,6 +213,7 @@ class PingClient(PingApp):
         while True:
             sent_message = await self.send(addr, my_id, family, self.message)
             await self.recv(sent_message)
+
             await asyncio.sleep(2)
             #my_id += 1
 
@@ -212,11 +240,11 @@ class PingClient(PingApp):
                     time_received = default_timer()
                     data = PingPacket(1,packet=rec_packet)
                     # if > len ja if < len
-                    if(data.data[0:6] == "server" and len(data.data)>8):
+                    if self.ping_message.is_data(data.data):
                         print(data.data)
                         #self.message = "0 "
                         return
-                    elif (data.data[0:6] == "server" and len(data.data)<=8):
+                    elif self.ping_message.is_message(data.data):
                         #print("ok")
                         return
                     #if(data.data == sent_message):
@@ -277,6 +305,7 @@ class PingServer(PingApp):
         super(PingServer, self).__init__()
         self.packet_type = ICMP_ECHO_REPLY
         self.message_head = "server:"
+        self.ping_message.mode = "server"
 
     async def comm(self, dest_addr):
         loop = asyncio.get_event_loop()
@@ -315,11 +344,11 @@ class PingServer(PingApp):
                     time_received = default_timer()
                     try:
                         data = PingPacket(1, packet=rec_packet)
-                        if (data.data[0:6] == "client" and len(data.data)>8):
+                        if self.ping_message.is_data(data.data):
                             print(data.data)
                             #self.message = "0 "
                             return
-                        elif (data.data[0:6] == "client" and len(data.data)<=8):
+                        elif self.ping_message.is_message(data.data):
                             #print("ok")
                             return
                         #if(data.data == self.message):
