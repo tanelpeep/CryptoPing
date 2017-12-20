@@ -153,23 +153,32 @@ class PingMessage(object):
     def __init__(self):
         self.mode = ""
 
-    def recieved_from(self):
+    def received_from(self):
         if self.mode == "server":
             return "client"
         elif self.mode == "client":
             return "server"
 
-    def is_message(self, message):
-        if message[0:6] == self.recieved_from() and len(message) <= 8:
+    def is_recv_message(self, message):
+        if message[0:6] == self.received_from() and len(message) <= 8:
             return True
         else:
             return False
 
-    def is_data(self, message):
-        if message[0:6] == self.recieved_from() and len(message) > 8:
+    def is_recv_data(self, message):
+        if message[0:6] == self.received_from() and len(message) > 8:
             return True
         else:
             return False
+
+    def print_message(self, message):
+        if len(message) > 7:
+            direction = ""
+            if self.mode == message[0:6]:
+                direction = "sent"
+            elif self.mode != message[0:6]:
+                direction = "recv"
+            print(direction + '(' + message[0:6] + '):' + message[7:len(message)])
 
 
 
@@ -221,8 +230,10 @@ class PingClient(PingApp):
         #self.socket.socket.close()
 
     async def send(self, dest_addr, my_id, family, message):
-        self.message = "client:0"
+        self.message = "client:"
         await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=message, packet_type=self.packet_type)
+        if not self.ping_message.is_recv_data(message):
+            self.ping_message.print_message(message)
         return message
 
         #self.socket.socket.close()
@@ -240,11 +251,11 @@ class PingClient(PingApp):
                     time_received = default_timer()
                     data = PingPacket(1,packet=rec_packet)
                     # if > len ja if < len
-                    if self.ping_message.is_data(data.data):
-                        print(data.data)
+                    if self.ping_message.is_recv_data(data.data):
+                        self.ping_message.print_message(data.data)
                         #self.message = "0 "
                         return
-                    elif self.ping_message.is_message(data.data):
+                    elif self.ping_message.is_recv_message(data.data):
                         #print("ok")
                         return
                     #if(data.data == sent_message):
@@ -326,9 +337,10 @@ class PingServer(PingApp):
         #self.socket.socket.close()
 
     async def send(self, dest_addr, my_id, family, message):
-        self.message = "server:0"
+        self.message = "server:"
         await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=message, packet_type=self.packet_type)
-
+        if not self.ping_message.is_recv_data(message):
+            self.ping_message.print_message(message)
         #self.socket.socket.close()
 
     async def recv(self):
@@ -344,11 +356,11 @@ class PingServer(PingApp):
                     time_received = default_timer()
                     try:
                         data = PingPacket(1, packet=rec_packet)
-                        if self.ping_message.is_data(data.data):
-                            print(data.data)
+                        if self.ping_message.is_recv_data(data.data):
+                            self.ping_message.print_message(data.data)
                             #self.message = "0 "
                             return
-                        elif self.ping_message.is_message(data.data):
+                        elif self.ping_message.is_recv_message(data.data):
                             #print("ok")
                             return
                         #if(data.data == self.message):
