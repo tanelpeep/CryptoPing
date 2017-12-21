@@ -459,15 +459,19 @@ if __name__ == '__main__':
     
     Checking command line arguments.
     """
+    arg = ""
     try:
         arg = sys.argv[1]
     except IndexError:
         show_usage()
 
+    dst_addr = ""
+    lcl_addr = ""
+
     if arg == 'client':
         try:
             dst_addr = sys.argv[2]
-        except:
+        except ValueError:
             show_usage()
 
         with PingModeClient() as client:
@@ -476,7 +480,10 @@ if __name__ == '__main__':
     elif arg == 'server':
         try:
             lcl_addr = sys.argv[2]
-        except:
+        except ValueError:
             show_usage()
         with PingModeServer() as server:
             server.init(dest_addr=lcl_addr)
+
+    else:
+        show_usage()
