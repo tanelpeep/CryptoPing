@@ -1,3 +1,30 @@
+#    CryptoPing: CryptoPing is python tool to send and receive encrypted messages/files over ICMP protocol.
+#    Copyright (C) 2017 Tanel Peep
+#
+#
+#    Based on ping.py package by George Notaras
+#    http://www.g-loaded.eu/2009/10/30/python-ping/
+#
+#    Based on icmp.py package by Daniel Vidal de la Rubia
+#    https://github.com/Vidimensional/Icmp-File-Transfer
+#
+#    Based on aioping package by Anton Belousov
+#    https://github.com/stellarbit/aioping
+#
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation version 2.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
 import sys
 import asyncio
 import struct
@@ -6,7 +33,6 @@ import functools
 import socket
 from aioconsole import ainput
 import async_timeout
-
 
 ICMP_ECHO_REQUEST = 8
 ICMP_ECHO_REPLY = 0
