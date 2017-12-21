@@ -34,6 +34,14 @@ import functools
 import socket
 from aioconsole import ainput
 import async_timeout
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
+from Crypto import Random
+import base64
+import hashlib
+import string
+import random
 
 ICMP_ECHO_REQUEST = 8
 ICMP_ECHO_REPLY = 0
@@ -47,6 +55,56 @@ if sys.platform == "win32":
 else:
     # On most other platforms the best timer is time.time()
     default_timer = time.time
+
+
+class PingCrypto(object):
+    def __init__(self):
+        self.rsalocalkeypair = None
+        self.rsalocalpubkey = None
+        self.aessecret = self.generate_aeskey()
+        print(self.aessecret)
+        self.aesblocksize = 32
+        self.aeskey = hashlib.sha256(self.str_to_bytes(self.aessecret)).digest()
+        self.aescipher = self.aeskey
+        self.encrypted = self.encrypt_aes("Hello")
+        print(self.encrypted)
+        self.decrypted = self.decrypt_aes(self.encrypted)
+        print(self.decrypted)
+
+    def generate_aeskey(self):
+        chars = string.ascii_letters + string.digits + string.punctuation
+        pwsize = 100
+        return ''.join((random.choice(chars)) for x in range(pwsize))
+
+    @staticmethod
+    def str_to_bytes(data):
+        u_type = type(b''.decode('utf8'))
+        if isinstance(data, u_type):
+            return data.encode('utf8')
+        return data
+
+    def _pad(self, s):
+        return s + (self.aesblocksize - len(s) % self.aesblocksize) * self.str_to_bytes(chr(self.aesblocksize - len(s) % self.aesblocksize))
+
+    @staticmethod
+    def _unpad(s):
+        return s[:-ord(s[len(s) - 1:])]
+
+    def generate_keys(self):
+        self.rsalocalkeypair = RSA.generate(2048)
+
+    def encrypt_aes(self, raw):
+        raw = self._pad(self.str_to_bytes(raw))
+        iv = Random.new().read(AES.block_size)
+        cipher = AES.new(self.aeskey, AES.MODE_CBC, iv)
+        return base64.b64encode(iv + cipher.encrypt(raw)).decode('utf-8')
+
+    def decrypt_aes(self, enc):
+        enc = base64.b64decode(enc)
+        iv = enc[:AES.block_size]
+        cipher = AES.new(self.aeskey, AES.MODE_CBC, iv)
+        return self._unpad(cipher.decrypt(enc[AES.block_size:])).decode('utf-8')
+
 
 
 class PingPacket(object):
@@ -422,6 +480,7 @@ class PingMode(object):
         """
         self.dest = ""
         self.loop = asyncio.get_event_loop()
+        self.a = PingCrypto()
 
     def __enter__(self):
         return self
