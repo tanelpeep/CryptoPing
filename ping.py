@@ -36,12 +36,13 @@ from aioconsole import ainput
 import async_timeout
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
-from Crypto.Random import get_random_bytes
 from Crypto import Random
+from Crypto.Cipher import PKCS1_OAEP
 import base64
 import hashlib
 import string
 import random
+import ast
 
 ICMP_ECHO_REQUEST = 8
 ICMP_ECHO_REPLY = 0
@@ -61,20 +62,30 @@ class PingCrypto(object):
     def __init__(self):
         self.rsalocalkeypair = None
         self.rsalocalpubkey = None
-        self.aessecret = self.generate_aeskey()
+        self.rsaremotepubkey = None
+        self.aessecret = None
+        self.generate_rsakeys()
+        self.generate_aeskey()
         print(self.aessecret)
         self.aesblocksize = 32
         self.aeskey = hashlib.sha256(self.str_to_bytes(self.aessecret)).digest()
         self.aescipher = self.aeskey
-        self.encrypted = self.encrypt_aes("Hello")
-        print(self.encrypted)
-        self.decrypted = self.decrypt_aes(self.encrypted)
-        print(self.decrypted)
+
+        self.aesencrypted = self.encrypt_aes("Hello")
+        print(self.aesencrypted)
+        self.aesdecrypted = self.decrypt_aes(self.aesencrypted)
+        print(self.aesdecrypted)
+
+        self.rsaencrypted = self.encrypt_rsa("Hello World")
+        print(self.rsaencrypted)
+        self.rsadecrypted = self.decrypt_rsa(self.rsaencrypted)
+        print(str(self.rsadecrypted))
+
 
     def generate_aeskey(self):
         chars = string.ascii_letters + string.digits + string.punctuation
         pwsize = 100
-        return ''.join((random.choice(chars)) for x in range(pwsize))
+        self.aessecret = ''.join((random.choice(chars)) for x in range(pwsize))
 
     @staticmethod
     def str_to_bytes(data):
@@ -90,8 +101,10 @@ class PingCrypto(object):
     def _unpad(s):
         return s[:-ord(s[len(s) - 1:])]
 
-    def generate_keys(self):
+    def generate_rsakeys(self):
         self.rsalocalkeypair = RSA.generate(2048)
+        self.rsalocalpubkey = self.rsalocalkeypair.publickey()
+
 
     def encrypt_aes(self, raw):
         raw = self._pad(self.str_to_bytes(raw))
@@ -105,8 +118,15 @@ class PingCrypto(object):
         cipher = AES.new(self.aeskey, AES.MODE_CBC, iv)
         return self._unpad(cipher.decrypt(enc[AES.block_size:])).decode('utf-8')
 
+    def encrypt_rsa(self, raw):
+        encryptor = PKCS1_OAEP.new(self.rsalocalpubkey)
+        return encryptor.encrypt(raw.encode('utf8'))
 
+    def decrypt_rsa(self, enc):
+        decryptor = PKCS1_OAEP.new(self.rsalocalkeypair)
+        return decryptor.decrypt(enc).decode('utf8')
 
+    
 class PingPacket(object):
     def __init__(self, packet_seq, packet_type=None, message=None, packet=None):
         """
