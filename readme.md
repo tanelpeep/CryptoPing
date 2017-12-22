@@ -9,14 +9,14 @@ ping.py server <destination (client)IP>
 
 **In _Linux_ ping.py can be used with client and server mode. In _Windows_ is available only client mode.**
 
-## Overview
+# Overview
 - client:
   - Using ICMP ECHO REQUEST
 
 - server:
   - Using ICMP ECHO REPLY
 
-### Handshake
+## Handshake
 <p align="center">
   <img src="https://i.imgur.com/lhjTNXs.png" />
 </p>
