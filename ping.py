@@ -308,6 +308,9 @@ class PingMessage(object):
         Specifying server and client data
         """
         self.mode = ""
+        self.pingcrypto = PingCrypto()
+
+
 
     def received_from(self):
         """
@@ -353,24 +356,24 @@ class PingMessage(object):
                 direction = "sent"
             elif self.mode != message[0:6]:
                 direction = "recv"
-            print(direction + '(' + message[0:6] + '):' + message[7:len(message)])
+            print(direction + '(' + message[0:6] + '):' + self.pingcrypto.decrypt_aes(message[7:len(message)]))
 
 
-class PingApp(object):
+class PingApp(PingMessage):
     def __init__(self):
         """
         SuperClass for Client and Server.
         Main App for sending and receiving packets
         """
-        self.pingcrypto = PingCrypto()
+        super(PingApp, self).__init__()
         self.socket = PingSocket()
         self.timeout = 10
-        self.ping_message = PingMessage()
         self.message_head = ""
         self.message_text = ""
         self.message = "test1234"
         self.handshake = False
         self.packet_seq = 1
+        self.encryption = True
 
 
     def __enter__(self):
@@ -383,9 +386,9 @@ class PingApp(object):
         """
         while True:
             self.message_text = await ainput("")
-            self.message = self.message_head + self.message_text
-            if len(self.message) % 2 != 0:
-                self.message += " "
+            #self.message = self.message_head + self.message_text
+            if len(self.message_text) % 2 != 0:
+                self.message_text += " "
 
 
 class PingClient(PingApp):
@@ -397,7 +400,7 @@ class PingClient(PingApp):
         super(PingClient, self).__init__()
         self.packet_type = ICMP_ECHO_REQUEST
         self.message_head = "client:"
-        self.ping_message.mode = "client"
+        self.mode = "client"
 
     async def comm(self, dest_addr):
         """
@@ -416,9 +419,15 @@ class PingClient(PingApp):
             while self.handshake == False:
                 await self.do_handshake(seq=self.packet_seq, addr=addr, family=family)
 
-            sent_message = await self.send(addr, self.packet_seq, family, self.message)
-            await self.recv(sent_message)
-            await asyncio.sleep(2)
+            if self.encryption:
+                self.message = self.message_head + self.pingcrypto.encrypt_aes(self.message_text)
+                sent_message = await self.send(addr, self.packet_seq, family, self.message)
+                await self.recv(sent_message)
+                await asyncio.sleep(2)
+            else:
+                sent_message = await self.send(addr, self.packet_seq, family, self.message)
+                await self.recv(sent_message)
+                await asyncio.sleep(2)
 
     async def do_handshake(self, seq, addr, family):
         if seq == 1:
@@ -431,7 +440,7 @@ class PingClient(PingApp):
                 self.packet_seq += 1
 
         elif seq == 2:
-            print("23")
+            print("2")
             message = self.message_head + str(self.pingcrypto.encrypt_rsa('OK'))
             sent_message = await self.send(addr, self.packet_seq, family, message)
             recv_message = await self.recv(sent_message)
@@ -456,9 +465,7 @@ class PingClient(PingApp):
                 pass
             await asyncio.sleep(1)
         else:
-            #self.packet_seq += 1
-            print("4")
-            await asyncio.sleep(5)
+            self.handshake = True
 
     async def send(self, dest_addr, my_id, family, message):
         """
@@ -474,8 +481,8 @@ class PingClient(PingApp):
                                         self.timeout, family,
                                         message=message,
                                         packet_type=self.packet_type)
-        if not self.ping_message.is_recv_data(message) and self.handshake == True:
-            self.ping_message.print_message(message)
+        if not self.is_recv_data(message) and self.handshake == True:
+            self.print_message(message)
         return message
 
     async def recv(self, sent_message):
@@ -497,12 +504,12 @@ class PingClient(PingApp):
                     print("t" + str(self.packet_seq))
                     if data.packet_seq == self.packet_seq:
 
-                        if self.ping_message.is_recv_data(data.data) and self.handshake == True:
-                            self.ping_message.print_message(data.data)
+                        if self.is_recv_data(data.data) and self.handshake == True:
+                            self.print_message(data.data)
                             return data.data
-                        elif self.ping_message.is_recv_message(data.data) and self.handshake == True:
+                        elif self.is_recv_message(data.data) and self.handshake == True:
                             return data.data
-                        elif self.ping_message.is_recv_data(data.data) and self.handshake == False:
+                        elif self.is_recv_data(data.data) and self.handshake == False:
                             #self.packet_seq += 1
 
                             print(data.data[7:])
@@ -521,7 +528,7 @@ class PingServer(PingApp):
         super(PingServer, self).__init__()
         self.packet_type = ICMP_ECHO_REPLY
         self.message_head = "server:"
-        self.ping_message.mode = "server"
+        self.mode = "server"
 
     async def comm(self, dest_addr):
         """
@@ -540,9 +547,15 @@ class PingServer(PingApp):
             while self.handshake == False:
                 await self.do_handshake(seq=self.packet_seq, addr=addr, family=family)
 
-            sent_message = await self.send(addr, self.packet_seq, family, self.message)
-            await self.recv(sent_message)
-            await asyncio.sleep(2)
+            if(self.encryption):
+                self.message = self.message_head + self.pingcrypto.encrypt_aes(self.message_text)
+                sent_message = await self.send(addr, self.packet_seq, family, self.message)
+                await self.recv(sent_message)
+                await asyncio.sleep(2)
+            else:
+                sent_message = await self.send(addr, self.packet_seq, family, self.message)
+                await self.recv(sent_message)
+                await asyncio.sleep(2)
 
     async def do_handshake(self, seq, addr, family):
         if seq == 1:
@@ -581,8 +594,7 @@ class PingServer(PingApp):
             await asyncio.sleep(1)
         else:
             #self.packet_seq += 1
-            print("4")
-            await asyncio.sleep(5)
+            self.handshake = True
 
     async def send(self, dest_addr, my_id, family, message):
         """
@@ -598,8 +610,8 @@ class PingServer(PingApp):
                                         self.timeout, family,
                                         message=message,
                                         packet_type=self.packet_type)
-        if not self.ping_message.is_recv_data(message) and self.handshake == True:
-            self.ping_message.print_message(message)
+        if not self.is_recv_data(message) and self.handshake == True:
+            self.print_message(message)
         return message
 
     async def recv(self, sent_message):
@@ -623,12 +635,12 @@ class PingServer(PingApp):
                         data = PingPacket(packet=rec_packet)
                         #print(self.packet_seq + "-" + data.packet_seq)
                         if data.packet_seq == self.packet_seq:
-                            if self.ping_message.is_recv_data(data.data) and self.handshake == True:
-                                self.ping_message.print_message(data.data)
+                            if self.is_recv_data(data.data) and self.handshake == True:
+                                self.print_message(data.data)
                                 return data.data
-                            elif self.ping_message.is_recv_message(data.data) and self.handshake == True:
+                            elif self.is_recv_message(data.data) and self.handshake == True:
                                 return data.data
-                            elif self.ping_message.is_recv_data(data.data) and self.handshake == False:
+                            elif self.is_recv_data(data.data) and self.handshake == False:
                                 return data.data[7:]
 
                     except Exception:
