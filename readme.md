@@ -18,7 +18,7 @@ ping.py server <destination (client)IP>
 
 ## Handshake
 <p align="center">
-  <img height="346px" width="216" src="https://i.imgur.com/lhjTNXs.png" />
+  <img height="346px" width="216px" src="https://i.imgur.com/lhjTNXs.png" />
 </p>
 
 ## Versions
