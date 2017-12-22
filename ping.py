@@ -141,6 +141,18 @@ class PingCrypto(object):
         except Exception:
             return False
 
+    def get_aessecret(self):
+        return self.aessecret
+
+    def set_aessecret(self, message):
+        try:
+            self.aessecret = message
+            self.aesblocksize = 32
+            self.aeskey = hashlib.sha256(self.str_to_bytes(self.aessecret)).digest()
+            self.aescipher = self.aeskey
+            return True
+        except Exception:
+            return False
 
 class PingPacket(object):
     def __init__(self, packet_seq=None, packet_type=None, message=None, packet=None):
@@ -424,15 +436,29 @@ class PingClient(PingApp):
             sent_message = await self.send(addr, self.packet_seq, family, message)
             recv_message = await self.recv(sent_message)
             print(recv_message)
-            if(self.pingcrypto.decrypt_rsa(ast.literal_eval(str(recv_message))) == 'OK'):
+            if(self.pingcrypto.set_aessecret(self.pingcrypto.decrypt_rsa(ast.literal_eval(str(recv_message))))):
                 print(self.pingcrypto.decrypt_rsa(ast.literal_eval(str(recv_message))))
                 sent_message = await self.send(addr, seq, family, message)
                 self.packet_seq += 1
             await asyncio.sleep(2)
         elif seq == 3:
             print("3")
+            message = self.message_head + str(self.pingcrypto.encrypt_aes('OK'))
+            sent_message = await self.send(addr, self.packet_seq, family, message)
+            recv_message = await self.recv(sent_message)
+            print(recv_message)
+            self.pingcrypto.decrypt_aes(recv_message)
+            try:
+                if (self.pingcrypto.decrypt_aes(recv_message) == 'OK'):
+                    sent_message = await self.send(addr, seq, family, message)
+                    self.packet_seq += 1
+            except Exception:
+                pass
+            await asyncio.sleep(1)
         else:
-            self.packet_seq += 1
+            #self.packet_seq += 1
+            print("4")
+            await asyncio.sleep(5)
 
     async def send(self, dest_addr, my_id, family, message):
         """
@@ -529,7 +555,7 @@ class PingServer(PingApp):
                 self.packet_seq += 1
         elif seq == 2:
             print("2")
-            message = self.message_head + str(self.pingcrypto.encrypt_rsa('OK'))
+            message = self.message_head + str(self.pingcrypto.encrypt_rsa(self.pingcrypto.get_aessecret()))
             sent_message = await self.send(addr, self.packet_seq, family, message)
             recv_message = await self.recv(sent_message)
             print(recv_message)
@@ -542,8 +568,21 @@ class PingServer(PingApp):
             await asyncio.sleep(1)
         elif seq == 3:
             print("3")
+            message = self.message_head + str(self.pingcrypto.encrypt_aes('OK'))
+            sent_message = await self.send(addr, self.packet_seq, family, message)
+            recv_message = await self.recv(sent_message)
+            print(recv_message)
+            try:
+                if (self.pingcrypto.decrypt_aes(recv_message) == 'OK'):
+                    sent_message = await self.send(addr, seq, family, message)
+                    self.packet_seq += 1
+            except Exception:
+                pass
+            await asyncio.sleep(1)
         else:
-            self.packet_seq += 1
+            #self.packet_seq += 1
+            print("4")
+            await asyncio.sleep(5)
 
     async def send(self, dest_addr, my_id, family, message):
         """
