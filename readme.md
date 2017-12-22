@@ -32,3 +32,4 @@ ping.py server <destination (client)IP>
 - [ ] Server mode listening (accept incoming connection)
 - [ ] Secure and insecure option for communication
 - [ ] Optimizing code
+- [ ] Handshake improvement
