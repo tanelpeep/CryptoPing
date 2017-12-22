@@ -59,71 +59,115 @@ else:
 
 class PingCrypto(object):
     def __init__(self):
+        """
+        Class for RSA and AES cryptography
+        """
         self.rsalocalkeypair = None
         self.rsalocalpubkey = None
         self.rsaremotepubkey = None
         self.aessecret = None
         self.generate_rsakeys()
         self.generate_aeskey()
-        #print(self.aessecret)
         self.aesblocksize = 32
         self.aeskey = hashlib.sha256(self.str_to_bytes(self.aessecret)).digest()
         self.aescipher = self.aeskey
 
-        #self.aesencrypted = self.encrypt_aes("Hello")
-        #print(self.aesencrypted)
-        #self.aesdecrypted = self.decrypt_aes(self.aesencrypted)
-        #print(self.aesdecrypted)
+        # self.aesencrypted = self.encrypt_aes("Hello")
+        # print(self.aesencrypted)
+        # self.aesdecrypted = self.decrypt_aes(self.aesencrypted)
+        # print(self.aesdecrypted)
 
-        #self.rsaencrypted = self.encrypt_rsa("Hello World")
-        #testin = str(self.rsaencrypted)
-        #testin2 = ast.literal_eval(str(testin))
-        #print(testin)
-        #self.rsadecrypted = self.decrypt_rsa(testin2)
-        #print(str(self.rsadecrypted))
-
+        # self.rsaencrypted = self.encrypt_rsa("Hello World")
+        # testin = str(self.rsaencrypted)
+        # testin2 = ast.literal_eval(str(testin))
+        # print(testin)
+        # self.rsadecrypted = self.decrypt_rsa(testin2)
+        # print(str(self.rsadecrypted))
 
     def generate_aeskey(self):
+        """
+        Generating AES secret and key
+        :return:
+        """
         chars = string.ascii_letters + string.digits + string.punctuation
         pwsize = 100
         self.aessecret = ''.join((random.choice(chars)) for x in range(pwsize))
 
     @staticmethod
     def str_to_bytes(data):
+        """
+        Decoding str to bytes
+        :param data:
+        :return:
+        """
         u_type = type(b''.decode('utf8'))
         if isinstance(data, u_type):
             return data.encode('utf8')
         return data
 
     def _pad(self, s):
+        """
+        AES pad function
+        :param s:
+        :return:
+        """
         return s + (self.aesblocksize - len(s) % self.aesblocksize) * self.str_to_bytes(
             chr(self.aesblocksize - len(s) % self.aesblocksize))
 
     @staticmethod
     def _unpad(s):
+        """
+        AES unpad function
+        :param s:
+        :return:
+        """
         return s[:-ord(s[len(s) - 1:])]
 
     def generate_rsakeys(self):
+        """
+        Generate RSA public and private keypair
+        :return:
+        """
         self.rsalocalkeypair = RSA.generate(2048)
         self.rsalocalpubkey = self.rsalocalkeypair.publickey()
 
     def encrypt_aes(self, raw):
+        """
+        Method for AES encryption
+        :param raw:
+        :return:
+        """
         raw = self._pad(self.str_to_bytes(raw))
         iv = Random.new().read(AES.block_size)
         cipher = AES.new(self.aeskey, AES.MODE_CBC, iv)
         return base64.b64encode(iv + cipher.encrypt(raw)).decode('utf-8')
 
     def decrypt_aes(self, enc):
+        """
+        Method for AES decryption
+        :param enc:
+        :return:
+        """
         enc = base64.b64decode(enc)
         iv = enc[:AES.block_size]
         cipher = AES.new(self.aeskey, AES.MODE_CBC, iv)
         return self._unpad(cipher.decrypt(enc[AES.block_size:])).decode('utf-8')
 
     def encrypt_rsa(self, raw):
+        """
+        Method for RSA encryption
+        :param raw:
+        :return:
+        """
         encryptor = PKCS1_OAEP.new(self.rsaremotepubkey)
         return encryptor.encrypt(raw.encode('utf8'))
 
     def decrypt_rsa(self, enc):
+        """
+        Method for RSA decryption
+        :param enc:
+        :return:
+        """
         try:
             decryptor = PKCS1_OAEP.new(self.rsalocalkeypair)
             decrypted = decryptor.decrypt(enc).decode('utf8')
@@ -132,9 +176,18 @@ class PingCrypto(object):
             return False
 
     def get_rsalocalpubkey(self):
+        """
+        Return RSA local public key
+        :return:
+        """
         return self.rsalocalpubkey.exportKey().decode('utf8')
 
     def set_rsaremotepubkey(self, message):
+        """
+        Set RSA remote public key
+        :param message:
+        :return:
+        """
         try:
             self.rsaremotepubkey = RSA.import_key(message.encode('utf8'))
             return True
@@ -142,9 +195,18 @@ class PingCrypto(object):
             return False
 
     def get_aessecret(self):
+        """
+        Get AES secret
+        :return:
+        """
         return self.aessecret
 
     def set_aessecret(self, message):
+        """
+        Set AES secret and generate key
+        :param message:
+        :return:
+        """
         try:
             self.aessecret = message
             self.aesblocksize = 32
@@ -153,6 +215,7 @@ class PingCrypto(object):
             return True
         except Exception:
             return False
+
 
 class PingPacket(object):
     def __init__(self, packet_seq=None, packet_type=None, message=None, packet=None):
@@ -241,8 +304,8 @@ class PingPacket(object):
         # Unpack ICMP header
         icmp_header = struct.unpack('bbHHh', icmp_header)
 
+        # Unpack packet sequence
         self.packet_seq = icmp_header[4]
-
 
         # Data offset
         data_offset = len(rec_packet) - len(icmp_header)
@@ -305,12 +368,11 @@ class PingMessage(object):
     def __init__(self):
         """
         Specifying server and client data
+        SuperClass for PingApp
         """
         self.mode = ""
         self.handshake = False
         self.pingcrypto = PingCrypto()
-
-
 
     def received_from(self):
         """
@@ -340,8 +402,8 @@ class PingMessage(object):
         :return:
         """
         if message[0:6] == self.received_from() and len(message) > 8:
-            if(self.handshake):
-                if(self.pingcrypto.decrypt_aes(message[7:len(message)]) == " "):
+            if self.handshake:
+                if self.pingcrypto.decrypt_aes(message[7:len(message)]) == " ":
                     return False
                 else:
                     return True
@@ -350,9 +412,14 @@ class PingMessage(object):
             return False
 
     def is_send_data(self, message):
+        """
+        Checking that sending ICMP packet contains data
+        :param message:
+        :return:
+        """
         if message[0:6] == self.mode and len(message) > 8:
             if self.handshake:
-                if (self.pingcrypto.decrypt_aes(message[7:len(message)]) == " "):
+                if self.pingcrypto.decrypt_aes(message[7:len(message)]) == " ":
                     return False
                 else:
                     return True
@@ -389,7 +456,6 @@ class PingApp(PingMessage):
         self.packet_seq = 1
         self.encryption = True
 
-
     def __enter__(self):
         return self
 
@@ -400,7 +466,7 @@ class PingApp(PingMessage):
         """
         while True:
             self.message_text = await ainput("")
-            #self.message = self.message_head + self.message_text
+            # self.message = self.message_head + self.message_text
             if len(self.message_text) % 2 != 0:
                 self.message_text += " "
 
@@ -430,7 +496,7 @@ class PingClient(PingApp):
         # my_id = 1
 
         while True:
-            while self.handshake == False:
+            while not self.handshake:
                 await self.do_handshake(seq=self.packet_seq, addr=addr, family=family)
 
             if self.encryption:
@@ -444,7 +510,13 @@ class PingClient(PingApp):
                 await asyncio.sleep(2)
 
     async def do_handshake(self, seq, addr, family):
-
+        """
+        Method for Client handshake
+        :param seq:
+        :param addr:
+        :param family:
+        :return:
+        """
         if seq == 1:
             print("Waiting for connection..")
             message = self.message_head + self.pingcrypto.get_rsalocalpubkey()
@@ -459,21 +531,17 @@ class PingClient(PingApp):
             message = self.message_head + str(self.pingcrypto.encrypt_rsa('OK'))
             sent_message = await self.send(addr, self.packet_seq, family, message)
             recv_message = await self.recv(sent_message)
-            #print(recv_message)
-            if(self.pingcrypto.set_aessecret(self.pingcrypto.decrypt_rsa(ast.literal_eval(str(recv_message))))):
-                #print(self.pingcrypto.decrypt_rsa(ast.literal_eval(str(recv_message))))
+            if self.pingcrypto.set_aessecret(self.pingcrypto.decrypt_rsa(ast.literal_eval(str(recv_message)))):
                 sent_message = await self.send(addr, seq, family, message)
                 self.packet_seq += 1
             await asyncio.sleep(2)
         elif seq == 3:
-            #print("3")
             message = self.message_head + str(self.pingcrypto.encrypt_aes('OK'))
             sent_message = await self.send(addr, self.packet_seq, family, message)
             recv_message = await self.recv(sent_message)
-            #print(recv_message)
             self.pingcrypto.decrypt_aes(recv_message)
             try:
-                if (self.pingcrypto.decrypt_aes(recv_message) == 'OK'):
+                if self.pingcrypto.decrypt_aes(recv_message) == 'OK':
                     sent_message = await self.send(addr, seq, family, message)
                     self.packet_seq += 1
             except Exception:
@@ -498,7 +566,7 @@ class PingClient(PingApp):
                                         self.timeout, family,
                                         message=message,
                                         packet_type=self.packet_type)
-        if self.is_send_data(message) == True and self.handshake == True:
+        if self.is_send_data(message) is True and self.handshake is True:
             self.print_message(message)
         return message
 
@@ -519,15 +587,12 @@ class PingClient(PingApp):
                     data = PingPacket(packet=rec_packet)
                     if data.packet_seq == self.packet_seq:
 
-                        if self.is_recv_data(data.data) and self.handshake == True:
+                        if self.is_recv_data(data.data) and self.handshake is True:
                             self.print_message(data.data)
                             return data.data
-                        elif self.is_recv_message(data.data) and self.handshake == True:
+                        elif self.is_recv_message(data.data) and self.handshake is True:
                             return data.data
-                        elif self.is_recv_data(data.data) and self.handshake == False:
-                            #self.packet_seq += 1
-
-                            #print(data.data[7:])
+                        elif self.is_recv_data(data.data) and self.handshake is False:
                             return data.data[7:]
 
         except asyncio.TimeoutError:
@@ -559,10 +624,10 @@ class PingServer(PingApp):
         my_id = 1
 
         while True:
-            while self.handshake == False:
+            while self.handshake is False:
                 await self.do_handshake(seq=self.packet_seq, addr=addr, family=family)
 
-            if(self.encryption):
+            if self.encryption:
                 self.message = self.message_head + self.pingcrypto.encrypt_aes(self.message_text)
                 sent_message = await self.send(addr, self.packet_seq, family, self.message)
                 await self.recv(sent_message)
@@ -573,7 +638,13 @@ class PingServer(PingApp):
                 await asyncio.sleep(2)
 
     async def do_handshake(self, seq, addr, family):
-
+        """
+        Method for server handshake
+        :param seq:
+        :param addr:
+        :param family:
+        :return:
+        """
         if seq == 1:
             print("Waiting for connection..")
             message = self.message_head + self.pingcrypto.get_rsalocalpubkey()
@@ -587,9 +658,8 @@ class PingServer(PingApp):
             message = self.message_head + str(self.pingcrypto.encrypt_rsa(self.pingcrypto.get_aessecret()))
             sent_message = await self.send(addr, self.packet_seq, family, message)
             recv_message = await self.recv(sent_message)
-            #print(recv_message)
             try:
-                if (self.pingcrypto.decrypt_rsa(ast.literal_eval(str(recv_message))) == 'OK'):
+                if self.pingcrypto.decrypt_rsa(ast.literal_eval(str(recv_message))) == 'OK':
                     sent_message = await self.send(addr, seq, family, message)
                     self.packet_seq += 1
             except Exception:
@@ -599,16 +669,14 @@ class PingServer(PingApp):
             message = self.message_head + str(self.pingcrypto.encrypt_aes('OK'))
             sent_message = await self.send(addr, self.packet_seq, family, message)
             recv_message = await self.recv(sent_message)
-            #print(recv_message)
             try:
-                if (self.pingcrypto.decrypt_aes(recv_message) == 'OK'):
+                if self.pingcrypto.decrypt_aes(recv_message) == 'OK':
                     sent_message = await self.send(addr, seq, family, message)
                     self.packet_seq += 1
             except Exception:
                 pass
             await asyncio.sleep(1)
         else:
-            #self.packet_seq += 1
             self.handshake = True
             print("Secure connection established")
 
@@ -627,7 +695,7 @@ class PingServer(PingApp):
                                         self.timeout, family,
                                         message=message,
                                         packet_type=self.packet_type)
-        if self.is_send_data(message) and self.handshake == True:
+        if self.is_send_data(message) and self.handshake is True:
             self.print_message(message)
         return message
 
@@ -650,14 +718,13 @@ class PingServer(PingApp):
                     try:
 
                         data = PingPacket(packet=rec_packet)
-                        #print(self.packet_seq + "-" + data.packet_seq)
                         if data.packet_seq == self.packet_seq:
-                            if self.is_recv_data(data.data) and self.handshake == True:
+                            if self.is_recv_data(data.data) and self.handshake is True:
                                 self.print_message(data.data)
                                 return data.data
-                            elif self.is_recv_message(data.data) and self.handshake == True:
+                            elif self.is_recv_message(data.data) and self.handshake is True:
                                 return data.data
-                            elif self.is_recv_data(data.data) and self.handshake == False:
+                            elif self.is_recv_data(data.data) and self.handshake is False:
                                 return data.data[7:]
 
                     except Exception:
@@ -750,7 +817,7 @@ if __name__ == '__main__':
     if arg == 'client':
         try:
             dst_addr = sys.argv[2]
-        except ValueError:
+        except Exception:
             show_usage()
 
         with PingModeClient() as client:
@@ -759,7 +826,7 @@ if __name__ == '__main__':
     elif arg == 'server':
         try:
             lcl_addr = sys.argv[2]
-        except ValueError:
+        except Exception:
             show_usage()
         with PingModeServer() as server:
             server.init(dest_addr=lcl_addr)
