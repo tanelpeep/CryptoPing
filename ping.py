@@ -49,7 +49,6 @@ ICMP_ECHO_REPLY = 0
 
 proto_icmp = socket.getprotobyname("icmp")
 
-
 if sys.platform == "win32":
     # On Windows, the best timer is time.clock()
     default_timer = time.clock
@@ -95,7 +94,8 @@ class PingCrypto(object):
         return data
 
     def _pad(self, s):
-        return s + (self.aesblocksize - len(s) % self.aesblocksize) * self.str_to_bytes(chr(self.aesblocksize - len(s) % self.aesblocksize))
+        return s + (self.aesblocksize - len(s) % self.aesblocksize) * self.str_to_bytes(
+            chr(self.aesblocksize - len(s) % self.aesblocksize))
 
     @staticmethod
     def _unpad(s):
@@ -104,7 +104,6 @@ class PingCrypto(object):
     def generate_rsakeys(self):
         self.rsalocalkeypair = RSA.generate(2048)
         self.rsalocalpubkey = self.rsalocalkeypair.publickey()
-
 
     def encrypt_aes(self, raw):
         raw = self._pad(self.str_to_bytes(raw))
@@ -126,7 +125,17 @@ class PingCrypto(object):
         decryptor = PKCS1_OAEP.new(self.rsalocalkeypair)
         return decryptor.decrypt(enc).decode('utf8')
 
-    
+    def get_rsalocalpubkey(self):
+        return self.rsalocalpubkey.exportKey().decode('utf8')
+
+    def set_rsaremotepubkey(self, message):
+        try:
+            self.rsaremotepubkey = RSA.import_key(message.encode('utf8'))
+            return True
+        except Exception:
+            return False
+
+
 class PingPacket(object):
     def __init__(self, packet_seq, packet_type=None, message=None, packet=None):
         """
@@ -185,7 +194,7 @@ class PingPacket(object):
         if len(data) % 2 != 0:
             data += " "
 
-        headdata = header.decode("utf-8")+data
+        headdata = header.decode("utf-8") + data
 
         # Calculate the checksum on the data and the dummy header.
         my_checksum = PingPacket.create_checksum(headdata)
@@ -329,13 +338,16 @@ class PingApp(object):
         SuperClass for Client and Server.
         Main App for sending and receiving packets
         """
+        self.pingcrypto = PingCrypto()
         self.socket = PingSocket()
         self.timeout = 10
         self.ping_message = PingMessage()
         self.message_head = ""
         self.message_text = ""
         self.message = "test1234"
+        self.handshake = False
         self.packet_seq = 1
+
 
     def __enter__(self):
         return self
@@ -374,13 +386,35 @@ class PingClient(PingApp):
         family = info[0][0]
         addr = info[0][4]
 
-        my_id = 1
+        # my_id = 1
 
         while True:
-            sent_message = await self.send(addr, my_id, family, self.message)
-            await self.recv(sent_message)
+            while self.handshake == False:
+                await self.do_handshake(seq=self.packet_seq, addr=addr, family=family)
 
+            sent_message = await self.send(addr, self.packet_seq, family, self.message)
+            await self.recv(sent_message)
             await asyncio.sleep(2)
+
+    async def do_handshake(self, seq, addr, family):
+        if seq == 1:
+            message = self.message_head + self.pingcrypto.get_rsalocalpubkey()
+            sent_message = await self.send(addr, self.packet_seq, family, message)
+            recv_message = await self.recv(sent_message)
+            if (self.pingcrypto.set_rsaremotepubkey(recv_message)):
+                self.packet_seq += 1
+            await asyncio.sleep(2)
+
+        elif seq == 2:
+            print("2")
+            message = self.message_head + self.pingcrypto.get_rsalocalpubkey()
+            sent_message = await self.send(addr, self.packet_seq, family, message)
+            recv_message = await self.recv(sent_message)
+            await asyncio.sleep(2)
+        elif seq == 3:
+            print("3")
+        else:
+            self.packet_seq += 1
 
     async def send(self, dest_addr, my_id, family, message):
         """
@@ -396,7 +430,7 @@ class PingClient(PingApp):
                                         self.timeout, family,
                                         message=message,
                                         packet_type=self.packet_type)
-        if not self.ping_message.is_recv_data(message):
+        if not self.ping_message.is_recv_data(message) and self.handshake == True:
             self.ping_message.print_message(message)
         return message
 
@@ -415,11 +449,17 @@ class PingClient(PingApp):
 
                     rec_packet = await loop.sock_recv(self.socket.socket, 1024)
                     data = PingPacket(1, packet=rec_packet)
-                    if self.ping_message.is_recv_data(data.data):
+                    if self.ping_message.is_recv_data(data.data) and self.handshake == True:
                         self.ping_message.print_message(data.data)
-                        return
-                    elif self.ping_message.is_recv_message(data.data):
-                        return
+                        return data.data
+                    elif self.ping_message.is_recv_message(data.data) and self.handshake == True:
+                        return data.data
+                    elif self.ping_message.is_recv_data(data.data) and self.handshake == False:
+                        #self.packet_seq += 1
+                        print(data.data[7:])
+
+                        return data.data[7:]
+
         except asyncio.TimeoutError:
             print("Ping timeout")
 
@@ -449,8 +489,32 @@ class PingServer(PingApp):
         my_id = 1
 
         while True:
-            sent_message = await self.send(addr, my_id, family, self.message)
+            while self.handshake == False:
+                await self.do_handshake(seq=self.packet_seq, addr=addr, family=family)
+
+            sent_message = await self.send(addr, self.packet_seq, family, self.message)
             await self.recv(sent_message)
+            await asyncio.sleep(2)
+
+    async def do_handshake(self, seq, addr, family):
+        if seq == 1:
+            message = self.message_head + self.pingcrypto.get_rsalocalpubkey()
+            sent_message = await self.send(addr, self.packet_seq, family, message)
+            recv_message = await self.recv(sent_message)
+            if self.pingcrypto.set_rsaremotepubkey(recv_message):
+                self.packet_seq += 1
+            await asyncio.sleep(2)
+
+        elif seq == 2:
+            print("2")
+            message = self.message_head + self.pingcrypto.get_rsalocalpubkey()
+            sent_message = await self.send(addr, self.packet_seq, family, message)
+            recv_message = await self.recv(sent_message)
+            await asyncio.sleep(2)
+        elif seq == 3:
+            print("3")
+        else:
+            self.packet_seq += 1
 
     async def send(self, dest_addr, my_id, family, message):
         """
@@ -462,9 +526,13 @@ class PingServer(PingApp):
         :return:
         """
         self.message = "server:"
-        await self.socket.sendto_socket(dest_addr, my_id, self.timeout, family, message=message, packet_type=self.packet_type)
-        if not self.ping_message.is_recv_data(message):
+        await self.socket.sendto_socket(dest_addr, my_id,
+                                        self.timeout, family,
+                                        message=message,
+                                        packet_type=self.packet_type)
+        if not self.ping_message.is_recv_data(message) and self.handshake == True:
             self.ping_message.print_message(message)
+        return message
 
     async def recv(self, sent_message):
         """
@@ -482,11 +550,13 @@ class PingServer(PingApp):
                     time_received = default_timer()
                     try:
                         data = PingPacket(1, packet=rec_packet)
-                        if self.ping_message.is_recv_data(data.data):
+                        if self.ping_message.is_recv_data(data.data) and self.handshake == True:
                             self.ping_message.print_message(data.data)
-                            return
-                        elif self.ping_message.is_recv_message(data.data):
-                            return
+                            return data.data
+                        elif self.ping_message.is_recv_message(data.data) and self.handshake == True:
+                            return data.data
+                        elif self.ping_message.is_recv_data(data.data) and self.handshake == False:
+                            return data.data[7:]
                     except Exception:
                         pass
         except asyncio.TimeoutError:
@@ -500,7 +570,6 @@ class PingMode(object):
         """
         self.dest = ""
         self.loop = asyncio.get_event_loop()
-        self.a = PingCrypto()
 
     def __enter__(self):
         return self
