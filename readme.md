@@ -9,7 +9,7 @@ ping.py server <destination (client)IP>
 
 **In _Linux_ ping.py can be used with client and server mode. In _Windows_ is available only client mode.**
 
-# Overview
+## Overview
 - client:
   - Using ICMP ECHO REQUEST
 
@@ -20,3 +20,15 @@ ping.py server <destination (client)IP>
 <p align="center">
   <img src="https://i.imgur.com/lhjTNXs.png" />
 </p>
+
+## Versions
+
+- [x] 1.0 - Send and receive messages over ICMP (not encrypted)
+- [x] 2.0 - Send and receive secure messages over ICMP (encrypted)
+- [ ] 3.0 - Send and receive files
+
+## Tasks
+
+- [ ] Server mode listening (accept incoming connection)
+- [ ] Secure and insecure option for communication
+- [ ] Optimizing code
