@@ -17,4 +17,4 @@ ping.py server <destination (client)IP>
   - Using ICMP ECHO REPLY
 
 ### Handshake
-![img](https://i.imgur.com/lhjTNXs.png)
+<div style="text-align:center"><img src ="https://i.imgur.com/lhjTNXs.png" /></div>
