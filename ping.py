@@ -308,6 +308,7 @@ class PingMessage(object):
         Specifying server and client data
         """
         self.mode = ""
+        self.handshake = False
         self.pingcrypto = PingCrypto()
 
 
@@ -328,7 +329,7 @@ class PingMessage(object):
         :param message:
         :return:
         """
-        if message[0:6] == self.received_from() and len(message) <= 8:
+        if message[0:6] == self.received_from():
             return True
         else:
             return False
@@ -340,7 +341,22 @@ class PingMessage(object):
         :return:
         """
         if message[0:6] == self.received_from() and len(message) > 8:
+            if(self.handshake):
+                if(self.pingcrypto.decrypt_aes(message[7:len(message)]) == " "):
+                    return False
+                else:
+                    return True
             return True
+        else:
+            return False
+
+    def is_send_data(self, message):
+        if message[0:6] == self.mode and len(message) > 8:
+            if self.handshake:
+                if (self.pingcrypto.decrypt_aes(message[7:len(message)]) == " "):
+                    return False
+                else:
+                    return True
         else:
             return False
 
@@ -371,7 +387,6 @@ class PingApp(PingMessage):
         self.message_head = ""
         self.message_text = ""
         self.message = "test1234"
-        self.handshake = False
         self.packet_seq = 1
         self.encryption = True
 
@@ -482,7 +497,7 @@ class PingClient(PingApp):
                                         self.timeout, family,
                                         message=message,
                                         packet_type=self.packet_type)
-        if not self.is_recv_data(message) and self.handshake == True:
+        if self.is_send_data(message) == True and self.handshake == True:
             self.print_message(message)
         return message
 
@@ -612,7 +627,7 @@ class PingServer(PingApp):
                                         self.timeout, family,
                                         message=message,
                                         packet_type=self.packet_type)
-        if not self.is_recv_data(message) and self.handshake == True:
+        if self.is_send_data(message) and self.handshake == True:
             self.print_message(message)
         return message
 
