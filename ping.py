@@ -477,6 +477,7 @@ class PingClient(PingApp):
         :return:
         """
         self.message = "client:"
+        self.message_text = " "
         await self.socket.sendto_socket(dest_addr, my_id,
                                         self.timeout, family,
                                         message=message,
@@ -606,6 +607,7 @@ class PingServer(PingApp):
         :return:
         """
         self.message = "server:"
+        self.message_text = " "
         await self.socket.sendto_socket(dest_addr, my_id,
                                         self.timeout, family,
                                         message=message,
