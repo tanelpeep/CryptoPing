@@ -726,8 +726,8 @@ def show_usage():
     :return:
     """
     print("USAGE:\n"
-          "    pyping.py client <destination IP>\n"
-          "    pyping.py server <local listening IP>\n"
+          "    pyping.py client <destination (server) IP>\n"
+          "    pyping.py server <destination (client) IP>\n"
           "    ")
     exit()
 
